@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
-from app.models.user import CollectorProfile, User
+from app.models.user import CollectorProfileLegacy, User
 from app.schemas.auth import UserCreate, CollectorProfileCreate
 
 def get_user_by_email(db: Session, email: str):
@@ -21,7 +21,7 @@ def create_user(db: Session, user: UserCreate):
     return db_user
 
 def create_collector_profile(db: Session, profile: CollectorProfileCreate, user_id: int):
-    db_profile = CollectorProfile(
+    db_profile = CollectorProfileLegacy(
         user_id=user_id,
         location=profile.location,
         pickup_radius_km=profile.pickup_radius_km,

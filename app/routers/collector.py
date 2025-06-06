@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi_pagination import Page, add_pagination, paginate
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,5 +74,3 @@ async def get_collector_profile(
         whatsapp_number=collector.whatsapp_number,
         average_rating=collector.average_rating
     )
-
-add_pagination(router)

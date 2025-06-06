@@ -29,8 +29,8 @@ class User(Base):
     # Add relationship to collector profile
     collector_profile = relationship("CollectorProfile", backref="user", uselist=False)
 
-class CollectorProfile(Base):
-    __tablename__ = "collector_profiles"
+class CollectorProfileLegacy(Base):
+    __tablename__ = "collector_profiles_legacy"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
