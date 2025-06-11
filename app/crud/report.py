@@ -1,38 +1,46 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.models.report import IllegalDumpReport
 from app.schemas.report import ReportCreate, ReportStatusEnum
 
-def create_report(db: Session, report: ReportCreate, user_id: int, image_url: str):
+async def create_report(db: AsyncSession, report: ReportCreate, user_id: int, image_url: str):
     db_report = IllegalDumpReport(
         user_id=user_id,
         image_url=image_url,
         location=report.location,
         description=report.description,
         waste_type=report.waste_type,
-        severity=report.severity
+        severity=report.severity,
+        status=ReportStatusEnum.PENDING  # Set initial status
     )
     db.add(db_report)
-    db.commit()
-    db.refresh(db_report)
+    await db.commit()
+    await db.refresh(db_report)
     return db_report
 
-def get_user_reports(db: Session, user_id: int, status: str = None):
-    query = db.query(IllegalDumpReport).filter(IllegalDumpReport.user_id == user_id)
+async def get_user_reports(db: AsyncSession, user_id: int, status: str = None):
+    query = select(IllegalDumpReport).where(IllegalDumpReport.user_id == user_id)
     if status:
-        query = query.filter(IllegalDumpReport.status == status)
-    return query.all()
+        query = query.where(IllegalDumpReport.status == status)
+    result = await db.execute(query)
+    return result.scalars().all()
 
-def get_report_by_id(db: Session, report_id: int, user_id: int = None):
-    query = db.query(IllegalDumpReport)
+async def get_report_by_id(db: AsyncSession, report_id: int, user_id: int = None):
+    query = select(IllegalDumpReport).where(IllegalDumpReport.id == report_id)
     if user_id:
-        query = query.filter(IllegalDumpReport.user_id == user_id)
-    return query.filter(IllegalDumpReport.id == report_id).first()
+        query = query.where(IllegalDumpReport.user_id == user_id)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
 
-def update_report_status(db: Session, report_id: int, status: ReportStatusEnum):
-    db_report = db.query(IllegalDumpReport).filter(IllegalDumpReport.id == report_id).first()
+async def update_report_status(db: AsyncSession, report_id: int, status: ReportStatusEnum):
+    query = select(IllegalDumpReport).where(IllegalDumpReport.id == report_id)
+    result = await db.execute(query)
+    db_report = result.scalar_one_or_none()
+    
     if not db_report:
         return None
+        
     db_report.status = status
-    db.commit()
-    db.refresh(db_report)
+    await db.commit()
+    await db.refresh(db_report)
     return db_report

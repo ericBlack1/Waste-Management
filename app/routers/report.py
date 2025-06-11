@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+import logging
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
@@ -17,16 +18,19 @@ from app.crud.report import (
 from app.core.file_handling import save_uploaded_file
 from app.models.user import User
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/reports", tags=["reports"])
 
-@router.post("/dumping", response_model=ReportOut)
+@router.post("/dumping", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
 async def create_dumping_report(
     image: UploadFile = File(...),
     location: str = Form(...),
     description: Optional[str] = Form(None),
     waste_type: str = Form(...),
     severity: str = Form(...),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: UserOut = Depends(get_current_user)
 ):
     try:
@@ -42,62 +46,80 @@ async def create_dumping_report(
         )
         
         # Create report in database
-        db_report = create_report(db, report_data, current_user.id, image_url)
+        db_report = await create_report(db, report_data, current_user.id, image_url)
         return db_report
+        
     except Exception as e:
+        logger.error(f"Error creating report: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
 
 @router.get("/dumping/mine", response_model=ReportList)
-def get_my_reports(
+async def get_my_reports(
     status: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: UserOut = Depends(get_current_user)
 ):
-    reports = get_user_reports(db, current_user.id, status)
+    reports = await get_user_reports(db, current_user.id, status)
     return {"reports": reports, "count": len(reports)}
 
 @router.get("/dumping/{report_id}", response_model=ReportOut)
-def get_report(
+async def get_report(
     report_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: UserOut = Depends(get_current_user)
 ):
-    report = get_report_by_id(db, report_id, current_user.id)
-    if not report:
+    try:
+        report = await get_report_by_id(db, report_id, current_user.id)
+        if not report:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Report not found"
+            )
+        return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching report: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Report not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error fetching report"
         )
-    return report
 
 @router.patch("/dumping/{report_id}/status", response_model=ReportOut)
-def update_report_status(
+async def update_report_status_endpoint(
     report_id: int,
     status_update: ReportStatusUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # Note: Using User model directly
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # First get the report without user filter to check ownership
-    db_report = db.query(IllegalDumpReport).filter(IllegalDumpReport.id == report_id).first()
-    
-    if not db_report:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Report not found"
-        )
+    try:
+        # Get the report
+        report = await get_report_by_id(db, report_id)
+        if not report:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Report not found"
+            )
     
     # Check if current user is the report owner
-    if db_report.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own reports"
-        )
+        if report.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update your own reports"
+            )
     
     # Update the status
-    db_report.status = status_update.status
-    db.commit()
-    db.refresh(db_report)
-    return db_report
+        updated_report = await update_report_status(db, report_id, status_update.status)
+        return updated_report
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating report status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating report status"
+        )

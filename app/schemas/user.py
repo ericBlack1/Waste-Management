@@ -1,31 +1,35 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-from .auth import RoleEnum, WasteTypeEnum
+from app.models.collector import WasteTypeEnum, QuantityEnum
+from .auth import RoleEnum
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     full_name: str
     email: str
     role: RoleEnum
     created_at: datetime
 
-    class Config:
-        orm_mode = True
-
 class CollectorProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    user_id: int
     location: str
-    pickup_radius_km: float
-    working_hours: str
-    accepted_waste_types: List[WasteTypeEnum]
-
-    class Config:
-        orm_mode = True
+    price_min: int
+    price_max: int
+    working_days: List[str]
+    waste_types: List[WasteTypeEnum]
+    quantity_accepted: List[QuantityEnum]
+    whatsapp_number: Optional[str]
+    average_rating: float
 
 class UserWithProfile(UserOut):
+    model_config = ConfigDict(from_attributes=True)
+    
     collector_profile: Optional[CollectorProfileOut] = None
-
-    class Config:
-        orm_mode = True

@@ -26,11 +26,11 @@ class IllegalDumpReport(Base):
     __tablename__ = "illegal_dump_reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     image_url = Column(String, nullable=False)
     location = Column(String, nullable=False)
     description = Column(String, nullable=True)
     waste_type = Column(SQLEnum(WasteTypeEnum), nullable=False)
     severity = Column(SQLEnum(SeverityLevelEnum), nullable=False)
-    status = Column(SQLEnum(ReportStatusEnum), default=ReportStatusEnum.PENDING)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(SQLEnum(ReportStatusEnum), default=ReportStatusEnum.PENDING, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

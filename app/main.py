@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.database import engine
 from app.models.user import Base
-from app.routers import auth, report, collector
+from app.routers import auth, report, collector, marketplace
 
 app = FastAPI()
 
@@ -24,6 +24,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(auth.router)
 app.include_router(report.router)
 app.include_router(collector.router)
+app.include_router(marketplace.router)
 
 # Create tables on startup
 @app.on_event("startup")

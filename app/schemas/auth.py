@@ -4,14 +4,18 @@ from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, Field, validator
 
+from app.models.collector import WasteTypeEnum, QuantityEnum, CollectorStatusEnum
+
 class RoleEnum(str, Enum):
     RESIDENT = "RESIDENT"
     COLLECTOR = "COLLECTOR"
 
 class WasteTypeEnum(str, Enum):
     PLASTIC = "PLASTIC"
-    ELECTRONIC = "ELECTRONIC"
     ORGANIC = "ORGANIC"
+    ELECTRONIC = "ELECTRONIC"
+    HAZARDOUS = "HAZARDOUS"
+    GENERAL = "GENERAL"
 
 class Token(BaseModel):
     access_token: str
@@ -41,6 +45,16 @@ class UserCreate(UserBase):
 
 class CollectorProfileCreate(BaseModel):
     location: str = Field(..., min_length=2, max_length=100)
-    pickup_radius_km: float = Field(..., gt=0)
-    working_hours: str = Field(..., min_length=5, max_length=100)
-    accepted_waste_types: List[WasteTypeEnum]
+    price_min: int = Field(..., gt=0)
+    price_max: int = Field(..., gt=0)
+    working_days: List[str] = Field(..., min_items=1)
+    waste_types: List[WasteTypeEnum] = Field(..., min_items=1)
+    quantity_accepted: List[QuantityEnum] = Field(..., min_items=1)
+    whatsapp_number: Optional[str] = Field(None, min_length=10, max_length=15)
+    status: CollectorStatusEnum = Field(default=CollectorStatusEnum.OFFLINE)
+
+    @validator('price_max')
+    def price_max_greater_than_min(cls, v, values, **kwargs):
+        if 'price_min' in values and v <= values['price_min']:
+            raise ValueError('price_max must be greater than price_min')
+        return v

@@ -26,8 +26,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)
     
-    # Add relationship to collector profile
-    collector_profile = relationship("CollectorProfile", backref="user", uselist=False)
+    # Add relationships to collector profiles
+    collector_profile_legacy = relationship("CollectorProfileLegacy", backref="user", uselist=False)
+    collector_profile = relationship("CollectorProfile", back_populates="user", uselist=False)
 
 class CollectorProfileLegacy(Base):
     __tablename__ = "collector_profiles_legacy"
@@ -40,4 +41,4 @@ class CollectorProfileLegacy(Base):
     accepted_waste_types = Column(ARRAY(ENUM(WasteTypeEnum)), nullable=False)
 
 
-__all__ = ["User", "CollectorProfile", "RoleEnum", "WasteTypeEnum"]
+__all__ = ["User", "CollectorProfileLegacy", "RoleEnum", "WasteTypeEnum"]

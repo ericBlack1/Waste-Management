@@ -26,12 +26,9 @@ async def get_async_db():
         yield db
 
 # Sync dependency (for existing auth)
-def get_db():
-    db = SessionLocal()
-    try:
+async def get_db():
+    async with AsyncSessionLocal() as db:
         yield db
-    finally:
-        db.close()
 
 # Keep your existing sync engine for migrations if needed
 from sqlalchemy import create_engine
